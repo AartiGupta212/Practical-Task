@@ -1,0 +1,133 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+
+<div class="container">
+    <h2>Time-Table Generator</h2>
+
+    <div class="row">
+        <div class="col-4">
+            <div>
+                <label class="form-label">Working Days (1-7):</label>
+                <input type="number" class="form-control" id="workingDays" min="1" max="7" />
+            </div>
+
+            <div>
+                <label class="form-label">Subjects Per Day (Max 8):</label>
+                <input type="number" class="form-control" id="subjectsPerDay" min="1" max="8" />
+            </div>
+
+            <div>
+                <label class="col-form-label">Total Subjects:</label>
+                <input type="number" class="form-control" id="totalSubjects" min="1" />
+                <button class="mt-2 btn btn-primary float-end" id="generateSubject">Enter</button>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-3">
+        <div class="col-4">
+            <div id="subjects"></div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-4">
+            <button class="btn btn-secondary text-center" id="generateBtn" disabled>Generate Timetable</button>
+        </div>
+    </div>
+
+    <table id="timeTable" class="table table-bordered mt-3">
+    </table>
+</div>
+
+
+@section Scripts {
+    <script type="text/javascript">
+        $("#generateSubject").click(function () {
+            let totalSubjects = $("#totalSubjects").val();
+            if (totalSubjects < 1) {
+                alert("Please enter positive number in total subjects");
+                return;
+            }
+            let subjects = $("#subjects");
+            let subjectInputs = "";
+
+            for (let i = 0; i < totalSubjects; i++) {
+                subjectInputs += `<div class="row mb-2">
+                                                            <div class="col-6"> <input class="form-control" type="text" placeholder="Subject Name" id="subject-${i}" /></div>
+                                                            <div class="col-6"><input  class="form-control" type="number" placeholder="Hours" min="1" id="hours-${i}" /></div>
+                                                         </div>`;
+            }
+
+            $("#subjects").html(subjectInputs);
+
+            if (totalSubjects == 0)
+                $("#generateBtn").attr("disabled", true);
+            else
+                $("#generateBtn").attr("disabled", false);
+        });
+
+        $("#generateBtn").click(function () {
+            let strWorkingDays = $("#workingDays").val();
+
+            let workingDays = Number(strWorkingDays);
+            if (isNaN(workingDays)) {
+                alert("Please enter valid working days");
+                return;
+            }
+
+            if (workingDays < 1 || workingDays > 7) {
+                alert("Working days between 1 to 7");
+                return;
+            }
+
+            let strSubjectPerDays = $("#subjectsPerDay").val();
+            let subjectPerDays = Number(strSubjectPerDays);
+            if (isNaN(subjectPerDays)) {
+                alert("Please enter valid subject per days");
+                return;
+            }
+
+            if (subjectPerDays < 1 || subjectPerDays > 9) {
+                alert("subject per days between 1 to 9");
+                return;
+            }
+
+            let totalSubjects = Number($("#totalSubjects").val());
+
+            let subjects = [];
+            for (let i = 0; i < totalSubjects; i++) {
+                let name = $(`#subject-${i}`).val();
+                let hours = $(`#hours-${i}`).val();
+                subjects.push({ name: name, hours: Number(hours) });
+            }
+
+            $.ajax({
+                method: "POST",
+                url: "/TimeTable/GenerateTimeTable",
+                contentType: "application/json",
+                data: JSON.stringify({ workingDays: workingDays, subjectsPerDay: subjectPerDays, subjects: subjects }),
+                success: function (response) {
+                    displayTimetable(response.timeTable)
+                },
+                error: function (response) {
+                    if(response && response.responseJSON){
+                        alert(response.responseJSON.errorMessage);
+                    }
+                }
+            });
+        });
+
+        function displayTimetable(timetable) {
+            let table = document.getElementById("timeTable");
+            table.innerHTML = "";
+
+            for (let i = 0; i < timetable.length; i++) {
+                let row = table.insertRow();
+                for (let j = 0; j < timetable[i].length; j++) {
+                    let cell = row.insertCell();
+                    cell.innerText = timetable[i][j];
+                }
+            }
+        }
+    </script>
+}
